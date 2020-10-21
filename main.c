@@ -11,48 +11,81 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define COMPRIMENTO_MAXIMO_NOME			50
+#include <errno.h>
 
-int main(void){
-	pid_t childPid = fork();
-	char *comando;
+#define COMPRIMENTO_MAXIMO_NOME			20
+#define NUMERO_MAXIMO_ARGUMENTOS		10
+
+int shell(void){
+	unsigned int interrupcao = 1;
 	unsigned int numeroArgumentos;
 	unsigned int indice;
-	char *argumentos[COMPRIMENTO_MAXIMO_NOME];
-	char *auxiliar;
+	char caminho [COMPRIMENTO_MAXIMO_NOME + 2] = {"/bin/"};
+	char comando [COMPRIMENTO_MAXIMO_NOME + 2];
+	char *argumentos [COMPRIMENTO_MAXIMO_NOME + 2];
+	char auxiliar [COMPRIMENTO_MAXIMO_NOME + 2];
+	char numeroArgumentosAuxiliar [NUMERO_MAXIMO_ARGUMENTOS + 2];
+  pid_t child_pid = 0;
 
-	if (childPid < 0){
-		// fork failed
-		fprintf (stderr, "Fork falhou.\n");
-		exit(1);
-	}
+	// Comeco do shell	
 	
-	else if (childPid == 0) {
-		
-		printf("Qual comando quer executar?"\n);
-		fgets(comando, COMPRIMENTO_MAXIMO_NOME, stdin);
+	// Comando
+	printf("Qual comando quer executar?\n");
+	fgets(comando, COMPRIMENTO_MAXIMO_NOME + 2, stdin);
+	comando [strlen (comando) - 1] = '\0';
+	
+	// Comando com o caminho do /bin
+	strcat(caminho, comando);	
+	printf("%s", caminho);
 
-		//verificar se o comando existe em /bin
+	// O comando como primeiro "argumento"
+	argumentos[0] = malloc (sizeof(char) * COMPRIMENTO_MAXIMO_NOME);
+	strncpy (argumentos[0], comando, COMPRIMENTO_MAXIMO_NOME);
 
-	  printf("Quantos argumentos voce quer digitar?\n");
-		scanf("%u", &numeroArgumentos);	
+	// Quantidade de argumentos
+	printf("Quantos argumentos voce quer digitar?\n");
+	fgets(numeroArgumentosAuxiliar, NUMERO_MAXIMO_ARGUMENTOS + 2, stdin);
+	numeroArgumentosAuxiliar [strlen (numeroArgumentosAuxiliar) - 1] = '\0';
+	numeroArgumentos = (unsigned int) strtoul(numeroArgumentosAuxiliar, NULL, 10);
 
-		for (indice = 0; indice < numeroArgumentos; indice++){
-			printf("Insira o proximo argumento:");
-			fgets(auxiliar, COMPRIMENTO_MAXIMO_NOME, stdin);
+	printf("O comando é %s\n", comando);
+	
+	// Coletar os outros argumentos
+	for (indice = 1; indice <= numeroArgumentos; indice++){
+		printf("\nDigite o argumento %u.\n", indice);
+		fgets(auxiliar, COMPRIMENTO_MAXIMO_NOME + 2, stdin);
+		auxiliar [strlen (auxiliar) - 1] = '\0';
+		argumentos[indice] = malloc (sizeof(char) * COMPRIMENTO_MAXIMO_NOME);
+		strncpy (argumentos[indice], auxiliar, COMPRIMENTO_MAXIMO_NOME);
 
-			*agumentos[indice] = *auxiliar;
-		}
+		printf("\n%s\n", argumentos[indice]);
+	}
+	argumentos[numeroArgumentos + 1] = NULL; 
 
-		//Run ping command
-		execlp("/bin/ping","ping","8.8.8.8","-c","50",NULL);
+	// Nao ha preocupacao com a recepcao do sinal a partir daqui
+	interrupcao = 0;
+
+	child_pid = fork();
+	if (child_pid == 0) {
+		execv(caminho, argumentos);
+	
+		if (errno == -1)
+			printf("Erro.\n");
 	} 
-
-	else {	
+	else {
 		wait(NULL);
-		printf("Tarefa completou.\n");
+		printf("Tarefa finalizada.\n");
 	}
 
+	return 0;
+}
+
+// Falta tratar o signalHandler
+
+
+int main(void){
+
+	shell();
 
 	return 0;
 }
