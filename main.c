@@ -19,18 +19,18 @@
 
 
 unsigned int interrupcao = 0;
-unsigned int loop = 0;
+unsigned int loop = 1;
 
 
 void signal_handler (int sigNumber){
 	if (interrupcao){
-  	if (sigNumber == SIGTERM)
-    	printf("Recebi um SIGTERM.\n");
+  	if (sigNumber == SIGUSR1)
+    	printf("Recebido um SIGUSR1.\n");
 		else 
     	printf("Sinal desconhecido.\n");
 
 		// voltar para o inicio do loop
-		loop = 1
+		loop = 1;
 	}
 }
 
@@ -46,6 +46,9 @@ int shell(void){
 	interrupcao = 1;
 	loop = 0;
 
+	if (signal(SIGUSR1, signal_handler) == SIG_ERR)
+  	printf("\nNao foi possivel tratar SIGUSR1\n");
+
 	// Comeco do shell	
 	
 	// Comando
@@ -60,7 +63,6 @@ int shell(void){
 	
 	// Comando com o caminho do /bin
 	strcat(caminho, comando);	
-	printf("%s", caminho);
 
 	// O comando como primeiro "argumento"
 	argumentos[0] = malloc (sizeof(char) * COMPRIMENTO_MAXIMO_NOME);
@@ -75,7 +77,10 @@ int shell(void){
 	numeroArgumentosAuxiliar [strlen (numeroArgumentosAuxiliar) - 1] = '\0';
 	numeroArgumentos = (unsigned int) strtoul(numeroArgumentosAuxiliar, NULL, 10);
 
-	printf("O comando é %s\n", comando);
+	if (loop)
+		return 0;
+	
+	printf("\nO comando é %s\n", comando);
 	
 	if (loop)
 		return 0;
@@ -88,7 +93,8 @@ int shell(void){
 		argumentos[indice] = malloc (sizeof(char) * COMPRIMENTO_MAXIMO_NOME);
 		strncpy (argumentos[indice], auxiliar, COMPRIMENTO_MAXIMO_NOME);
 
-		printf("\n%s\n", argumentos[indice]);
+		if (loop)
+			return 0;
 	}
 	argumentos[numeroArgumentos + 1] = NULL; 
 
@@ -114,10 +120,7 @@ int shell(void){
 }
 
 int main(void){
-	if (signal(SIGTERM, signal_handler) == SIG_ERR)
-  	printf("\nNao foi possivel tratar SIGTERM\n");
 
-// loop != 0
 	while (loop)	
 		shell();
 
