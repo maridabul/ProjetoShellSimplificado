@@ -10,14 +10,31 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include <errno.h>
 
 #define COMPRIMENTO_MAXIMO_NOME			20
 #define NUMERO_MAXIMO_ARGUMENTOS		10
 
+
+unsigned int interrupcao = 0;
+unsigned int loop = 0;
+
+
+void signal_handler (int sigNumber){
+	if (interrupcao){
+  	if (sigNumber == SIGTERM)
+    	printf("Recebi um SIGTERM.\n");
+		else 
+    	printf("Sinal desconhecido.\n");
+
+		// voltar para o inicio do loop
+		loop = 1
+	}
+}
+
 int shell(void){
-	unsigned int interrupcao = 1;
 	unsigned int numeroArgumentos;
 	unsigned int indice;
 	char caminho [COMPRIMENTO_MAXIMO_NOME + 2] = {"/bin/"};
@@ -26,6 +43,8 @@ int shell(void){
 	char auxiliar [COMPRIMENTO_MAXIMO_NOME + 2];
 	char numeroArgumentosAuxiliar [NUMERO_MAXIMO_ARGUMENTOS + 2];
   pid_t child_pid = 0;
+	interrupcao = 1;
+	loop = 0;
 
 	// Comeco do shell	
 	
@@ -33,6 +52,11 @@ int shell(void){
 	printf("Qual comando quer executar?\n");
 	fgets(comando, COMPRIMENTO_MAXIMO_NOME + 2, stdin);
 	comando [strlen (comando) - 1] = '\0';
+
+	// signal_handler modifica loop de 0 para 1
+	// enquanto loop for 0, nao houve interrupcao
+	if (loop)
+		return 0;
 	
 	// Comando com o caminho do /bin
 	strcat(caminho, comando);	
@@ -41,6 +65,9 @@ int shell(void){
 	// O comando como primeiro "argumento"
 	argumentos[0] = malloc (sizeof(char) * COMPRIMENTO_MAXIMO_NOME);
 	strncpy (argumentos[0], comando, COMPRIMENTO_MAXIMO_NOME);
+	
+	if (loop)
+		return 0;
 
 	// Quantidade de argumentos
 	printf("Quantos argumentos voce quer digitar?\n");
@@ -49,6 +76,9 @@ int shell(void){
 	numeroArgumentos = (unsigned int) strtoul(numeroArgumentosAuxiliar, NULL, 10);
 
 	printf("O comando é %s\n", comando);
+	
+	if (loop)
+		return 0;
 	
 	// Coletar os outros argumentos
 	for (indice = 1; indice <= numeroArgumentos; indice++){
@@ -62,6 +92,9 @@ int shell(void){
 	}
 	argumentos[numeroArgumentos + 1] = NULL; 
 
+	if (loop)
+		return 0;
+	
 	// Nao ha preocupacao com a recepcao do sinal a partir daqui
 	interrupcao = 0;
 
@@ -80,12 +113,13 @@ int shell(void){
 	return 0;
 }
 
-// Falta tratar o signalHandler
-
-
 int main(void){
+	if (signal(SIGTERM, signal_handler) == SIG_ERR)
+  	printf("\nNao foi possivel tratar SIGTERM\n");
 
-	shell();
+// loop != 0
+	while (loop)	
+		shell();
 
 	return 0;
 }
